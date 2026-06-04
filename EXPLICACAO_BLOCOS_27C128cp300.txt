@@ -1,0 +1,384 @@
+================================================================================
+   ENGENHARIA REVERSA DA ROM  27C128cp300.BIN
+   Microcomputador CP-300 (Prologica, 1981/1982) - clone do TRS-80
+   CPU Zilog Z80  |  EPROM 27C128 = 16 KB (16384 bytes)
+   Material didatico para aula de Linguagem de Maquina / Arquitetura
+================================================================================
+
+Autor do material: (professor)            Data: 04/06/2026
+Arquivos gerados nesta pasta:
+  - 27C128cp300.BIN ............ a ROM original (binario)
+  - z80dasm.py ................. o disassembler Z80 que escrevemos em Python
+  - disassembly_full.txt ....... a ROM inteira traduzida para Assembly Z80
+  - EXPLICACAO_BLOCOS_27C128cp300.txt ... este documento
+
+
+--------------------------------------------------------------------------------
+0. O QUE E "FAZER O DISASSEMBLY"?  (a ideia central da aula)
+--------------------------------------------------------------------------------
+A EPROM guarda apenas NUMEROS (bytes de 0 a 255). A CPU Z80 le esses numeros
+um a um e os interpreta como ORDENS (instrucoes). "Fazer o disassembly" e o
+caminho inverso: pegamos os numeros e traduzimos de volta para o nome das
+instrucoes (mnemonicos do Assembly), reconstruindo o programa.
+
+   BINARIO/HEX (o que esta gravado)      ->   ASSEMBLY (o que a CPU faz)
+   F3                                    ->   DI          ; desliga interrupcoes
+   AF                                    ->   XOR A       ; zera o registrador A
+   C3 15 30                              ->   JP 3015H    ; pula para o endereco 3015
+
+Isso e ENGENHARIA REVERSA: nao temos o codigo-fonte original, entao deduzimos
+o que o programa faz lendo apenas o binario.
+
+IMPORTANTE para os alunos: o Z80 tem instrucoes de TAMANHO VARIAVEL (1 a 4
+bytes). Por isso e preciso comecar a "ler" no lugar certo; se comecarmos no meio
+de uma instrucao, tudo sai embaralhado. Tambem existem regioes que NAO sao
+codigo, e sim DADOS (textos, tabelas). O disassembler traduz tudo como se fosse
+codigo; cabe ao engenheiro reverso reconhecer "isto aqui e texto, nao programa".
+
+
+--------------------------------------------------------------------------------
+1. ANATOMIA DE UMA LINHA DO DISASSEMBLY
+--------------------------------------------------------------------------------
+No arquivo disassembly_full.txt cada linha tem 3 colunas:
+
+      0002    C3 15 30     JP 3015H
+       |          |           |
+       |          |           +--- MNEMONICO: a instrucao em Assembly
+       |          +--------------- BYTES crus, em hexadecimal, como estao na ROM
+       +-------------------------- ENDERECO (offset) do 1o byte, em hexadecimal
+
+Ler "JP 3015H" = "Jump", isto e, "salte a execucao para o endereco 3015 (hex)".
+O 'H' indica HEXADECIMAL. 3015H = 12309 em decimal.
+
+
+--------------------------------------------------------------------------------
+2. MINI-GLOSSARIO Z80 (so o necessario para entender os blocos)
+--------------------------------------------------------------------------------
+REGISTRADORES (memorias internas, rapidissimas, da CPU):
+   A .......... acumulador (onde a maioria das contas acontece)
+   B C D E H L  registradores de 8 bits; combinam em pares de 16 bits:
+   BC, DE, HL . pares de 16 bits (HL costuma apontar enderecos de memoria)
+   SP ......... Stack Pointer (topo da pilha)
+   PC ......... Program Counter (aponta a proxima instrucao - quem "anda" pela ROM)
+   IX, IY ..... registradores de indice (acesso a memoria com deslocamento)
+
+INSTRUCOES QUE MAIS APARECEM NESTA ROM:
+   LD destino,origem .. "Load": copia um valor. Ex.: LD A,3EH  (A recebe 3E)
+   JP nnnn ............ salto incondicional para o endereco nnnn
+   JR e ............... salto relativo curto (anda poucos bytes p/ frente/tras)
+   CALL nnnn .......... chama uma sub-rotina (guarda o retorno na pilha)
+   RET ................ retorna da sub-rotina
+   RST n .............. "Restart": CALL rapido para enderecos fixos (00,08,10...38)
+   PUSH/POP ........... empilha / desempilha um par de 16 bits
+   IN A,(p) / OUT (p),A  leem/escrevem em PORTAS de hardware (teclado, video...)
+   CP / OR / XOR / AND  comparacoes e operacoes logicas
+   DI / EI ............ desliga / liga as interrupcoes
+   DJNZ e ............. decrementa B e repete enquanto B<>0 (laco de repeticao)
+   LDIR ............... copia um bloco inteiro de memoria de uma vez (poderosa!)
+
+
+================================================================================
+3. MAPA DE MEMORIA DA ROM  (a "planta baixa" dos blocos)
+================================================================================
+Identificamos os blocos cruzando o disassembly com os TEXTOS achados na ROM
+(comando: procurar sequencias ASCII legiveis). Resultado:
+
+  FAIXA (hex)     CONTEUDO                                           TIPO
+  -----------     -------------------------------------------------  --------
+  0000 - 003F     Tabela de vetores RST + entradas de sistema        CODIGO
+  0040 - 012C     Rotinas de E/S, teclado, video, inicializacao      CODIGO
+  012D - 0FFF     Nucleo do interpretador BASIC (parte 1)            CODIGO
+  0105 / 0111     Textos "Mem. usada", "PROLOGICA 1981 BASIC"        DADOS(texto)
+  0279            Texto "Diskette?"                                  DADOS(texto)
+  1000 - 15FF     Interpretador BASIC (avaliacao de expressoes)      CODIGO
+  1625 - 17xx     TABELA DE PALAVRAS-CHAVE do BASIC (RESET,INPUT...)  DADOS(tabela)
+  18C9 / 191C     Tabela de codigos de ERRO + "Erro","READY","Break" DADOS(texto)
+  1A00 - 2FFF     Executores dos comandos BASIC (PRINT, LIST, etc.)  CODIGO
+  3044 - 3145     TABELAS DE CARACTERES (traducao p/ video/impressao) DADOS(tabela)
+  3012 - 304x     Tabela de saltos do nucleo (cold start, etc.)      CODIGO
+  3455+           Cold start / inicializacao do sistema              CODIGO
+  3739 - 3Cxx     Rotinas de CASSETE / DISKETTE ("Cass?","BASIC S/N") CODIGO
+  3D00 - 3FFF     PROGRAMA MONITOR (VERSAO 1.1, 1982)                CODIGO+DADOS
+
+Observacao historica: a ROM mistura o BASIC (de 1981) com um MONITOR de
+linguagem de maquina (de 1982). A string em 3DF7 "MONITOR VERSAO 1.1 1982" e a
+assinatura do segundo programa. Isso explica por que ha DOIS conjuntos de
+mensagens dentro do mesmo chip.
+
+
+================================================================================
+4. EXPLICACAO BLOCO A BLOCO  (engenharia reversa comentada)
+================================================================================
+
+--------------------------------------------------------------------------------
+BLOCO A  -  VETORES RST E ENTRADA DO SISTEMA   (enderecos 0000h a 003Fh)
+--------------------------------------------------------------------------------
+Trecho real do disassembly:
+
+  0000  F3           DI            ; ao ligar, DESLIGA interrupcoes (estado seguro)
+  0001  AF           XOR A         ; zera A (truque classico: A XOR A = 0)
+  0002  C3 15 30     JP 3015H      ; pula para a rotina de inicializacao (cold start)
+  0005  C3 00 40     JP 4000H      ; RST 08 -> desvia para a RAM (gancho do usuario)
+  0008  C3 00 40     JP 4000H
+  000B  E1           POP HL
+  000C  E9           JP (HL)
+  000D  C3 12 30     JP 3012H
+  0010  C3 03 40     JP 4003H      ; RST 10
+  0013  C5           PUSH BC
+  ...
+  0038  C3 12 40     JP 4012H      ; RST 38 (vetor da interrupcao no modo 1)
+
+POR QUE ISSO IMPORTA (conceito-chave da aula):
+Quando o Z80 LIGA, o PC (Program Counter) comeca SEMPRE no endereco 0000h. Por
+isso o primeiro byte da ROM e o primeiro byte que a CPU executa. Aqui ele:
+  1) DI  -> impede interrupcoes antes de tudo estar pronto;
+  2) XOR A -> zera o acumulador;
+  3) JP 3015H -> desvia para a rotina de partida (cold start).
+
+Os enderecos 0008, 0010, 0018, 0020, 0028, 0030, 0038 sao os pontos de RST
+(Restart). RST e um "CALL" de 1 byte so, muito rapido, usado como atalho para
+servicos do sistema. Repare que varios deles fazem "JP 40xxH": eles pulam para a
+RAM (a partir de 4000h). Esse e o mecanismo classico do TRS-80/CP-300: a ROM
+deixa GANCHOS que o programa em RAM pode redirecionar. O endereco 0038h e o
+vetor da interrupcao do "modo 1" - e para la que o Z80 corre 60 vezes por
+segundo quando uma interrupcao acontece.
+
+CURIOSIDADE PARA OS ALUNOS: "XOR A" para zerar A em vez de "LD A,0".
+Os dois deixam A=0, mas XOR A ocupa 1 byte e e mais rapido que LD A,0 (2 bytes).
+Em 1981, com ROM de 16 KB, cada byte economizado contava. Isso e "otimizacao".
+
+
+--------------------------------------------------------------------------------
+BLOCO B  -  CONSTRUCAO DA TABELA DE GANCHOS EM RAM   (enderecos 0075h a 00AAh)
+--------------------------------------------------------------------------------
+  0075  11 80 40     LD DE,4080H   ; DE aponta o destino na RAM
+  0078  21 F7 18     LD HL,18F7H   ; HL aponta a tabela-modelo na ROM
+  007B  01 27 00     LD BC,0027H   ; BC = 39 bytes a copiar
+  007E  ED B0        LDIR          ; COPIA 39 bytes da ROM->RAM de uma vez
+  ...
+  0093  21 52 41     LD HL,4152H
+  0096  36 C3        LD (HL),C3H   ; grava o byte C3 = opcode de "JP"
+  0098  23           INC HL
+  0099  73           LD (HL),E     ; grava o endereco-destino (parte baixa)
+  ...
+  009D  10 F7        DJNZ 0096H    ; repete o laco B vezes (monta varios "JP")
+
+ENGENHARIA REVERSA: este bloco MONTA, dentro da RAM, uma tabela de instrucoes
+"JP xxxx". Ele literalmente ESCREVE PROGRAMA EM TEMPO DE EXECUCAO: o byte C3h e
+o codigo da instrucao JP, e logo depois ele grava o endereco de destino. Assim o
+sistema cria os "ganchos" (os JP 40xxH que vimos no Bloco A) que o usuario pode
+sobrescrever. A instrucao estrela aqui e LDIR: copia BC bytes de (HL) para (DE)
+automaticamente - um "copiar e colar" de memoria feito pelo hardware.
+
+Logo adiante (perto de 444Ch) ha o TESTE DE MEMORIA: a rotina escreve um valor,
+le de volta, compara (CPL/CP), e assim descobre quantos KB de RAM existem.
+E dai que sai a mensagem "Mem. usada" (texto em 0105h).
+
+
+--------------------------------------------------------------------------------
+BLOCO C  -  MENSAGENS DE ABERTURA   (enderecos 0105h e 0111h)  [DADOS]
+--------------------------------------------------------------------------------
+Estes bytes NAO sao codigo - sao TEXTO ASCII que aparece na tela ao ligar:
+
+  0105: "Mem. usada "
+  0111: "PROLOGICA  1981  BASIC     "
+
+Como reconhecer dados vs. codigo? Quando o disassembler produz instrucoes sem
+sentido ("LD H,C / LD H,D / LD H,E"...) em sequencia e, ao olhar os bytes em
+hexadecimal, eles caem na faixa 20h-7Eh (caracteres imprimiveis), e sinal de que
+ali ha um TEXTO, nao um programa. Os bytes 50 52 4F 4C... sao P R O L... .
+
+LICAO: o mesmo numero pode ser CODIGO ou DADO dependendo de COMO a CPU chega
+ate ele. 50h executado e a instrucao "LD D,B"; 50h lido como texto e a letra 'P'.
+O contexto (quem aponta para o byte) decide o significado.
+
+
+--------------------------------------------------------------------------------
+BLOCO D  -  NUCLEO DO INTERPRETADOR BASIC   (faixa ~012Dh a ~15FFh)
+--------------------------------------------------------------------------------
+Aqui mora o "cerebro" do BASIC: o laco que le a linha digitada, identifica o
+comando e o executa. O padrao tipico que se ve no disassembly e:
+
+  - CALL para a rotina que pega o proximo caractere do programa;
+  - CP <valor> para comparar com tokens/caracteres;
+  - JP/JR condicionais que desviam conforme o resultado da comparacao.
+
+Exemplo de rotina de saida de caractere (perto de 0033h):
+  0033  CD 3B 00     CALL 003BH    ; imprime um caractere
+  ...
+O BASIC do CP-300 e "Level II compativel": ele guarda cada comando na memoria
+nao como texto, mas como um TOKEN (1 byte). "PRINT" vira um unico byte. Isso
+economiza memoria e acelera a execucao - o interpretador so compara bytes.
+
+
+--------------------------------------------------------------------------------
+BLOCO E  -  TABELA DE PALAVRAS-CHAVE DO BASIC   (faixa ~1625h a ~17xx)  [DADOS]
+--------------------------------------------------------------------------------
+As strings extraidas mostram, em sequencia, os nomes dos comandos:
+
+  ...RESET RANDOM INPUT RESTORE GOSUB RETURN ... PRINT LIST DELETE CLEAR
+  LOAD SAVE ... STRING$ INSTR POINT TIME$ INKEY$ LEFT$ RIGHT$ ...
+
+Como funciona o "tokenizador": quando voce digita PRINT, o interpretador
+percorre esta tabela comparando seu texto. Ao achar "PRINT", ele substitui a
+palavra inteira por UM unico byte (o token). Na hora de LISTAR o programa, faz o
+inverso: troca o token de volta pela palavra. Por isso a tabela existe nos DOIS
+sentidos (digitar e listar).
+
+Cada nome aqui na ROM costuma ter o ULTIMO caractere com o bit alto ligado
+(valor + 80h) para marcar "fim da palavra" - um truque comum de compactacao.
+
+
+--------------------------------------------------------------------------------
+BLOCO F  -  CODIGOS E MENSAGENS DE ERRO   (enderecos 18C9h e 191Ch)  [DADOS]
+--------------------------------------------------------------------------------
+  18C9: "NFSNRGODFCOVOMULBSDD/0IDTMOSLSSTCNNRRWUEMOFDL3"
+  191C: " Erro " ... "READY" ... "Break"
+
+A primeira string e uma TABELA DE CODIGOS DE ERRO de 2 letras cada, colados:
+   NF = NEXT sem FOR        SN = Syntax (sintaxe)     RG = RETURN sem GOSUB
+   OD = Out of Data        FC = Function Call         OV = Overflow
+   OM = Out of Memory      UL = Undefined Line        BS = Bad Subscript
+   DD = reDimensioned      /0 = Divisao por zero      ID = Illegal Direct
+   TM = Type Mismatch ...
+Quando ocorre um erro, o BASIC pega o INDICE do erro, busca as 2 letras nesta
+tabela e imprime, por exemplo, "SN Erro" + a linha onde aconteceu ("C Erro na").
+"READY" e o prompt que aparece quando o BASIC esta esperando voce digitar.
+"Break" e o que aparece quando voce aperta a tecla de parada.
+
+
+--------------------------------------------------------------------------------
+BLOCO G  -  TABELAS DE CARACTERES   (enderecos 3044h a 3145h)  [DADOS]
+--------------------------------------------------------------------------------
+  3044: "@abcdefghijklmnopqrstuvwxyz:"
+  3065: "0123456789:;,-./"
+  3085: "`ABCDEFGHIJKLMNOPQRSTUVWXYZ..."
+  3145: " !\"#$%&'()*+,-./0123456789:;<=>?@ABC...xyz{|}~"  (ASCII completo)
+
+Sao tabelas de TRADUCAO/CONVERSAO de caracteres: mapeiam codigos internos do
+teclado para os codigos enviados ao video ou a impressora, e organizam os
+simbolos por categoria (letras, digitos, pontuacao). O disassembler decodifica
+esses bytes como instrucoes ("LD H,B" etc.), mas como sao imprimiveis e estao em
+ordem alfabetica/numerica, reconhecemos que e uma TABELA, nao programa.
+
+
+--------------------------------------------------------------------------------
+BLOCO H  -  LEITURA DE HARDWARE: TECLADO/PORTAS   (exemplo em 3039h)
+--------------------------------------------------------------------------------
+  3039  DB E4        IN A,(E4H)    ; LE a porta de hardware E4h para dentro de A
+  303B  CB 6F        BIT 5,A       ; testa o bit 5 do valor lido
+  303D  C3 1C 35     JP 351CH      ; desvia conforme o resultado
+
+ENGENHARIA REVERSA: IN A,(E4H) conversa diretamente com o HARDWARE. A porta E4h
+no CP-300 esta ligada a status do sistema (interrupcoes/cassete). "BIT 5,A"
+verifica se um sinal especifico esta ligado (1) ou desligado (0), e o programa
+decide o que fazer. Este e o conceito de E/S MAPEADA EM PORTAS: o Z80 fala com
+perifericos usando IN (ler) e OUT (escrever) em "portas" numeradas.
+
+
+--------------------------------------------------------------------------------
+BLOCO I  -  CASSETE E DISKETTE   (faixa ~3739h a ~3Cxx)
+--------------------------------------------------------------------------------
+Textos que delatam a funcao: "Cass? " (37F7h), "Diskette?" (0279h),
+"BASIC (S ou N)" (3D3Ah). Sao as rotinas de gravacao/leitura em FITA CASSETE
+(armazenamento da epoca) e a pergunta, na partida, se o usuario quer entrar no
+BASIC ou no sistema de disco. A gravacao em cassete e feita ligando/desligando
+um bit de uma porta de saida em intervalos de tempo precisos (modulacao por
+software) - por isso ha muitos lacos de temporizacao (DJNZ) nessa regiao.
+
+
+--------------------------------------------------------------------------------
+BLOCO J  -  O PROGRAMA MONITOR   (faixa ~3D00h a 3FFFh)
+--------------------------------------------------------------------------------
+Assinatura encontrada:
+  3DF7: "MONITOR VERSAO 1.1  1982"
+  3E11: "PROLOGICA"
+  3D54: "NOME  END.INICIO  QTOS BYTES"
+  3D71: "NOME"
+  3DB7: "A B C D E F H L I A'B'C'D'E'F'H'L'IXIYPCSP"   <- nomes dos registradores!
+  3D3A: "BASIC (S ou N)"
+
+O MONITOR e um programa que permite ao usuario AVANCADO inspecionar e alterar a
+memoria e os registradores da CPU diretamente - uma ferramenta de depuracao em
+linguagem de maquina. A string 3DB7 lista TODOS os registradores do Z80
+(inclusive os "linha" A', B'... e os indices IX, IY, alem de PC e SP): isso
+indica um comando que MOSTRA o estado completo da CPU na tela - exatamente o que
+um programador de Assembly precisa para depurar.
+O cabecalho "NOME  END.INICIO  QTOS BYTES" e o formato de listagem de blocos de
+memoria (nome, endereco inicial, quantidade de bytes) - tipico de salvar/carregar
+programas em linguagem de maquina via cassete.
+
+
+================================================================================
+5. EXEMPLO RESOLVIDO: DECODIFICANDO BYTES A MAO (faca na lousa!)
+================================================================================
+Pegue os 6 primeiros bytes da ROM:   F3  AF  C3 15 30  C3
+Vamos "ser a CPU" e decodificar passo a passo, lembrando que o Z80 le da
+esquerda para a direita e cada opcode diz quantos bytes ainda faltam.
+
+  Passo 1: byte F3  -> tabela diz: DI  (1 byte). PC anda 1.
+           >> 0000  F3            DI
+
+  Passo 2: byte AF  -> tabela diz: XOR A (1 byte). PC anda 1.
+           >> 0001  AF            XOR A
+
+  Passo 3: byte C3  -> tabela diz: JP nnnn (3 bytes: C3 + 2 do endereco).
+           Os 2 bytes seguintes sao 15 e 30. O Z80 e "little-endian":
+           o byte BAIXO vem primeiro. Entao o endereco = 30 15 = 3015h.
+           >> 0002  C3 15 30      JP 3015H
+
+  Passo 4: o proximo C3 ja e outra instrucao (comeca em 0005h).
+
+CONCEITO IMPORTANTE (little-endian): o numero 3015h e gravado como "15 30"
+(invertido). Os alunos PRECISAM dominar isso para nao errar enderecos.
+
+
+================================================================================
+6. COMO REGERAR TUDO ISTO (reprodutibilidade)
+================================================================================
+1) Disassembly completo da ROM (ja gerado em disassembly_full.txt):
+       python z80dasm.py 27C128cp300.BIN 0 > disassembly_full.txt
+
+2) Para listar os TEXTOS escondidos (achar os blocos de dados):
+       python -c "d=open('27C128cp300.BIN','rb').read();
+       s=b'';i0=0
+       (loop que imprime sequencias ASCII >= 4 caracteres)"
+   (a versao pronta foi usada para montar a secao 3 deste documento)
+
+3) Para focar um bloco, abra disassembly_full.txt e procure pelo endereco
+   (ex.: digite 3DF7 para ir ao Monitor).
+
+
+================================================================================
+7. EXERCICIOS PROPOSTOS PARA OS ALUNOS
+================================================================================
+1) Por que o primeiro byte executado e sempre o do endereco 0000h? O que
+   aconteceria se trocassemos F3 (DI) por 00 (NOP)?
+
+2) Converta para decimal os enderecos: 3015H, 4000H, E4H.
+   (Resp.: 12309, 16384, 228)
+
+3) Explique, com suas palavras, a diferenca entre JP, JR, CALL e RST.
+
+4) No Bloco A vimos varios "JP 40xxH". Por que a ROM aponta para a RAM em vez de
+   resolver tudo sozinha? (dica: ganchos/personalizacao pelo usuario)
+
+5) Os bytes 50 52 4F 4C em 0111h: escreva o texto que eles formam e tambem
+   diga qual instrucao Z80 o byte 50h representaria se fosse CODIGO.
+
+6) Localize no disassembly_full.txt a instrucao IN A,(E4H). Qual periferico
+   esta sendo consultado e qual bit e testado logo depois?
+
+7) (Desafio) Encontre, na tabela de erros (18C9h), o codigo de "Divisao por
+   zero" e explique como o interpretador escolhe a mensagem certa.
+
+
+================================================================================
+8. RESUMO DE UMA FRASE
+================================================================================
+Esta EPROM de 16 KB contem, num so chip, o BASIC do CP-300 (Prologica, 1981) e
+um Monitor de linguagem de maquina (1982); fazer o disassembly e traduzir seus
+bytes de volta para Assembly Z80, e a engenharia reversa e descobrir, bloco a
+bloco, que cada faixa de enderecos cumpre um papel: ligar a maquina, falar com o
+teclado/video, interpretar comandos BASIC e depurar a CPU.
+================================================================================

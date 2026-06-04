@@ -1,0 +1,17 @@
+# Metadados do macOS (AppleDouble)
+._*
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Artefatos de teste do monitor (blocos salvos)
+*.blk
+
+# Imagens temporarias de preview
+preview_*.png
+chk_*.png
+
+# Configuracao local do Claude Code
+.claude/

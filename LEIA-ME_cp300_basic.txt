@@ -1,0 +1,152 @@
+================================================================================
+   CP-300 BASIC em Python  (cp300_basic.py)
+   Reimplementacao do firmware - SEM emulacao de CPU
+================================================================================
+
+O QUE E
+-------
+cp300_basic.py NAO executa os bytes Z80 da ROM. Ele REIMPLEMENTA em Python o
+COMPORTAMENTO do firmware do CP-300: a tela de abertura (strings reais da ROM
+"Mem. usada" e "PROLOGICA  1981  BASIC"), o prompt READY / ">", o editor de
+linhas e um interpretador BASIC nivel-II compativel, com os codigos de erro de
+2 letras do TRS-80/CP-300 (SN, NF, RG, /0, BS, TM, OD, UL...).
+
+Diferenca para a outra versao (engenharia reversa):
+  - disassembly_full.txt / PDF  -> mostram o codigo Z80 ORIGINAL.
+  - cp300_basic.py              -> RECRIA o que esse codigo FAZIA, em Python.
+
+COMO USAR
+---------
+   python cp300_basic.py
+
+Aparece a abertura e o prompt ">". A partir dai:
+  - Linha que comeca com NUMERO  -> guarda/edita o programa.
+  - Linha SEM numero             -> executa na hora (modo imediato/calculadora).
+  - RUN          executa o programa     LIST         lista o programa
+  - LIST 10-40   lista uma faixa        NEW          apaga o programa
+  - SYSTEM / BYE sai do BASIC           Ctrl-C       interrompe (Break)
+
+COMANDOS SUPORTADOS
+-------------------
+  PRINT (com ; , e TAB)   LET / atribuicao implicita   INPUT
+  IF...THEN...ELSE        FOR...TO...STEP...NEXT        GOTO  GOSUB  RETURN
+  ON x GOTO/GOSUB         DIM (matrizes)               READ  DATA  RESTORE
+  REM  '                  END  STOP  CLEAR  CLS        RUN  LIST  NEW
+
+FUNCOES
+-------
+  Numericas: ABS INT SGN SQR SIN COS TAN ATN EXP LOG RND
+  String:    LEN LEFT$ RIGHT$ MID$ CHR$ ASC STR$ VAL STRING$ INSTR TAB
+
+EXEMPLO RAPIDO (digite linha a linha)
+-------------------------------------
+  10 FOR I=1 TO 5
+  20 PRINT I, I*I
+  30 NEXT I
+  40 PRINT "FIM"
+  RUN
+
+Ou carregue o exemplo pronto pelo terminal:
+  python cp300_basic.py < exemplo.bas      (Windows: type exemplo.bas | python cp300_basic.py)
+
+OBSERVACOES DIDATICAS
+---------------------
+- Numeros sao impressos com espaco a esquerda quando positivos e espaco a
+  direita, exatamente como o BASIC da Microsoft/TRS-80 fazia.
+- A virgula no PRINT pula para a proxima "zona" de 16 colunas.
+- Erros aparecem como "?XX Erro" e, dentro de um programa, "?XX Erro na <linha>"
+  - reproduzindo as strings " Erro " e " na " encontradas na ROM (enderecos
+  191Ch e 1924h) e a tabela de codigos em 18C9h.
+- INKEY$ devolve string vazia (leitura nao-bloqueante de tecla nao e portavel
+  entre terminais; foi mantida apenas por compatibilidade de sintaxe).
+
+
+================================================================================
+   CP-300 MONITOR em Python  (cp300_monitor.py)
+================================================================================
+Recria o "MONITOR VERSAO 1.1  1982 - PROLOGICA" do fim da ROM (a partir de
+~3D00h). Tambem SEM emular a CPU. Carrega a ROM REAL em 0000-3FFF, entao o
+aluno pode inspecionar e desassemblar o firmware de verdade por dentro do
+monitor.
+
+   python cp300_monitor.py
+
+Na abertura ele pergunta, como o original:  BASIC (S ou N)?
+   S -> entra no BASIC (chama cp300_basic.py)
+   N -> entra no monitor (prompt "*")
+
+COMANDOS (todos os numeros em HEXADECIMAL, como no monitor original):
+   R                registradores do Z80 (A B C D E F H L I + alternativos +
+                    IX IY PC SP) - o MESMO conjunto da string 3DB7h da ROM
+   R PC 3015        altera um registrador
+   D [end] [qtd]    dump hexadecimal + ASCII (sem argumento, continua)
+   L [end] [qtd]    desassembly Z80 (usa o z80dasm.py)
+   M <end>          examina/edita memoria byte a byte
+   E <end> b b ...  escreve bytes
+   F <ini><fim><b>  preenche intervalo
+   C <org><dst><q>  copia bloco
+   H <ini><fim> b.. procura uma sequencia de bytes
+   G <end>          'executa' a partir de end (mostra as proximas instrucoes;
+                    nao ha emulacao, entao nao roda de fato)
+   S <nome><i><f>   salva um bloco em arquivo (formato NOME END.INICIO QTOS BYTES)
+   P <nome> [end]   carrega um bloco salvo
+   V                tabela de blocos salvos
+   B                vai para o BASIC
+   ?                ajuda          Q / X   sai
+
+EXPERIMENTO DIDATICO SUGERIDO
+-----------------------------
+1) python cp300_monitor.py  ->  responda N
+2) D 0000 40        (veja os primeiros bytes da ROM: F3 AF C3 15 30 ...)
+3) L 0000 10        (desassembla: DI / XOR A / JP 3015H ...)
+4) H 0000 3FFF C3 15 30   (procura o salto inicial -> achado em 0002)
+5) L 3455 30        (desassembla o cold start real do firmware)
+6) D 0111 20        (mostra a string 'PROLOGICA  1981  BASIC')
+
+Assim o aluno ve o MESMO codigo do PDF/engenharia reversa, agora navegavel.
+
+
+================================================================================
+   emucp  -  EMULADOR Z80 do CP-300  (cp -> emucp.py)
+================================================================================
+DIFERENCA FUNDAMENTAL:
+  - cp300_basic.py / cp300_monitor.py  REIMPLEMENTAM o comportamento em Python.
+  - emucp.py                           EMULA A CPU Z80: le os bytes da ROM e
+                                       EXECUTA cada opcode do firmware, como o
+                                       chip Z80 real faria.
+
+Tem um nucleo Z80 completo (instrucoes base + prefixos CB, ED, DD, FD), com
+flags corretas, memoria de 64 KB (ROM protegida em 0000-3FFF) e modelo de
+portas de E/S suficiente para rodar o cold start verdadeiro.
+
+USOS:
+   python emucp.py --test       autoteste que PROVA que o nucleo Z80 esta certo
+   python emucp.py --trace 30   executa o firmware do reset e mostra 30 passos
+   python emucp.py              abre o depurador interativo
+
+DEPURADOR (todos os numeros em HEXADECIMAL):
+   s [n]      passo a passo: executa n instrucoes mostrando cada uma
+   g [end]    roda ate um endereco (breakpoint) ou ate HALT
+   n <num>    executa <num> instrucoes em silencio
+   r          registradores + instrucao atual
+   d <end>[n] dump de memoria          b <end> / bc  breakpoint / limpar
+   pc <end>   ajusta o PC              reset  recarrega a ROM
+   v          liga/desliga log de portas        t  autoteste        q  sai
+
+EXPERIMENTO DIDATICO (ver o firmware se inicializar de verdade):
+   python emucp.py
+   z80> s 12            (veja DI, XOR A, JP 3015, JP 3455, IM 1, OUT (E4),A ...)
+   z80> b 37AF          (breakpoint no caminho "sem disco")
+   z80> g               (~590 mil instrucoes reais sao executadas!)
+   z80> d 4000 20       (veja os ganchos C3 .. .. que o cold start MONTOU na RAM)
+
+O QUE FUNCIONA / O QUE NAO
+--------------------------
+- FUNCIONA: a EXECUCAO dos opcodes e 100% real - registradores, flags, LDIR,
+  configuracao de portas e a construcao da tabela de ganchos na RAM acontecem
+  exatamente como no hardware. O trace confere byte a byte com o disassembly.
+- LIMITE: chegar a uma tela de BASIC interativa exigiria os detalhes do video
+  e do teclado do CP-300 (endereco da memoria de video, varredura do teclado),
+  que NAO estao dentro da ROM. Por isso o emulador foca em executar e DEPURAR o
+  firmware - que e o objetivo pedagogico.
+================================================================================
