@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}CP-300{% endblock %} :: Z80Nostalgia</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <style>
+    body, .font-vt { font-family: "VT323", "Courier New", monospace; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-black font-vt text-lg">
+  <div class="max-w-5xl mx-auto px-4 py-6">
+    <header class="flex items-center justify-between mb-6">
+      <a href="{{ url_for('index') }}" class="phosphor-bright text-2xl tracking-widest">
+        &gt; CP-300<span class="blink-cursor ml-1"></span>
+      </a>
+      <nav class="flex gap-4 text-base phosphor-dim">
+        <a class="hover:text-[var(--phosphor)]" href="{{ url_for('terminal', mode='basic') }}">BASIC</a>
+        <a class="hover:text-[var(--phosphor)]" href="{{ url_for('terminal', mode='monitor') }}">MONITOR</a>
+        <a class="hover:text-[var(--phosphor)]" href="{{ url_for('arquivos') }}">ARQUIVOS</a>
+      </nav>
+    </header>
+
+    {% block content %}{% endblock %}
+
+    <footer class="mt-8 text-center phosphor-dim text-sm">
+      Z80Nostalgia &mdash; Prol&oacute;gica CP-300, 1981/1982 &middot; emulador educacional
+    </footer>
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

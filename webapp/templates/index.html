@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+<div class="crt-screen p-8 md:p-14 text-center">
+  <div class="crt-output">
+    <p class="phosphor-bright text-4xl md:text-5xl mb-2 tracking-widest">PROL&Oacute;GICA CP-300</p>
+    <p class="phosphor mb-8">Mem. usada 47104&nbsp;&nbsp;&nbsp;&nbsp;BASIC 1981 &middot; MONITOR 1.1 1982</p>
+
+    <p class="phosphor mb-10">Escolha um modo para come&ccedil;ar:</p>
+
+    <div class="flex flex-col md:flex-row gap-6 justify-center mb-10">
+      <a href="{{ url_for('terminal', mode='basic') }}"
+         class="btn-retro block px-8 py-5 text-2xl">
+        &gt; BASIC<br /><span class="text-sm phosphor-dim">interpretador nivel-II</span>
+      </a>
+      <a href="{{ url_for('terminal', mode='monitor') }}"
+         class="btn-retro block px-8 py-5 text-2xl">
+        &gt; MONITOR<br /><span class="text-sm phosphor-dim">registradores, mem&oacute;ria, disassembly</span>
+      </a>
+    </div>
+
+    <a href="{{ url_for('arquivos') }}" class="phosphor-dim underline hover:text-[var(--phosphor)]">
+      gerenciar arquivos .bas / .blk salvos
+    </a>
+  </div>
+</div>
+
+<div class="mt-6 phosphor-dim text-sm leading-relaxed">
+  <p>Esta p&aacute;gina executa, no servidor, os mesmos scripts do terminal local
+     (<code>cp300_basic.py</code> e <code>cp300_monitor.py</code>) sem nenhuma
+     altera&ccedil;&atilde;o &mdash; apenas mostra a entrada e sa&iacute;da deles aqui na tela.</p>
+  <p>Seus arquivos <code>.bas</code>/<code>.blk</code> ficam numa pasta tempor&aacute;ria
+     fora do reposit&oacute;rio do projeto (veja em <a class="underline" href="{{ url_for('arquivos') }}">Arquivos</a>).</p>
+</div>
+{% endblock %}

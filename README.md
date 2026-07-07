@@ -88,6 +88,23 @@ de ganchos na RAM** (visível em `d 4000`), exatamente como o hardware.
 
 ---
 
+## 🌐 4. Interface Web (BASIC e MONITOR no navegador)
+
+A pasta **`webapp/`** expõe o BASIC e o MONITOR numa página web (Flask +
+Tailwind), com visual de terminal CRT verde-fósforo estilo TRS-80. Ela **não
+altera** `cp300_basic.py` / `cp300_monitor.py` / `emucp.py` — apenas os
+executa como processos, como no terminal local.
+
+```bash
+pip install -r webapp/requirements.txt
+python webapp/app.py
+```
+
+Abra `http://127.0.0.1:5000`. Detalhes (pasta de arquivos `.bas`/`.blk` fora
+do repositório, como funciona a ponte terminal↔web) em `webapp/README.md`.
+
+---
+
 ## 🗂️ Estrutura
 
 ```
@@ -102,6 +119,7 @@ cp300_monitor.py                  Monitor (reimplementação)
 emucp.py                          emulador Z80
 exemplo.bas                       programa BASIC de demonstração
 LEIA-ME_cp300_basic.txt           manual das ferramentas
+webapp/                           interface web (Flask + Tailwind) do BASIC/MONITOR
 ```
 
 ## ✅ Requisitos

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Arquivos{% endblock %}
+{% block content %}
+
+<h1 class="phosphor-bright text-2xl mb-4">&gt; Arquivos do CP-300</h1>
+
+<div class="crt-screen p-4 md:p-6">
+  <div class="flex items-center justify-between mb-3">
+    <p class="phosphor-dim text-sm">pasta no servidor: <span id="data-dir-label">...</span></p>
+    <button id="btn-refresh-files" class="btn-retro px-3 py-1 text-sm">atualizar</button>
+  </div>
+
+  <form id="upload-form" class="flex flex-wrap items-center gap-3 mb-4 text-sm">
+    <input id="upload-input" type="file" accept=".bas,.blk,.txt"
+           class="phosphor-dim text-sm file:btn-retro file:border file:px-3 file:py-1 file:mr-2" />
+    <button type="submit" class="btn-retro px-3 py-1">enviar arquivo</button>
+    <span id="upload-msg" class="phosphor-dim"></span>
+  </form>
+
+  <div id="file-list" class="crt-output border border-green-900/40 rounded p-2 max-h-[50vh] overflow-y-auto"></div>
+</div>
+
+<div class="mt-6 phosphor-dim text-sm leading-relaxed">
+  <p>Esta pasta fica <strong>fora</strong> da raiz do projeto (numa pasta tempor&aacute;ria do
+     sistema) e &eacute; usada tanto pelo BASIC (bot&atilde;o "carregar"/"salvar programa" na tela
+     do BASIC) quanto pelo MONITOR (comandos <code>S</code>/<code>P</code> de blocos).</p>
+  <p>Extens&otilde;es aceitas para envio: <code>.bas</code>, <code>.blk</code>, <code>.txt</code>.</p>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/files.js') }}"></script>
+{% endblock %}

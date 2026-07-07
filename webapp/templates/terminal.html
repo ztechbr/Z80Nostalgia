@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ mode_label }}{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-3 text-sm">
+  <div class="flex items-center gap-2">
+    <span id="led" class="led led-off"></span>
+    <span id="led-label" class="phosphor-dim">conectando...</span>
+  </div>
+  <div class="flex gap-3">
+    <a href="{{ url_for('terminal', mode=other_mode) }}" class="btn-retro px-3 py-1">
+      ir para {{ other_label }}
+    </a>
+    <button id="btn-restart" class="btn-retro px-3 py-1">reiniciar</button>
+  </div>
+</div>
+
+<div class="crt-screen p-4 md:p-6">
+  <pre id="output" class="crt-output phosphor h-[52vh] overflow-y-auto text-base md:text-lg leading-snug"></pre>
+  <div class="crt-output flex items-center gap-2 mt-2 border-t border-green-900/50 pt-2">
+    <span class="phosphor-bright">&gt;</span>
+    <input id="cmdline" autocomplete="off" spellcheck="false"
+           class="cmd-input flex-1 text-base md:text-lg"
+           placeholder="digite um comando e pressione Enter" />
+  </div>
+</div>
+
+<section class="mt-6">
+  <div class="flex items-center justify-between mb-2">
+    <h2 class="phosphor-bright text-xl">Arquivos ({{ mode_label }})</h2>
+    <div class="flex gap-3 text-sm">
+      {% if mode == "basic" %}
+      <button id="btn-save-basic" class="btn-retro px-3 py-1">salvar programa (LIST)</button>
+      {% endif %}
+      <button id="btn-refresh-files" class="btn-retro px-3 py-1">atualizar</button>
+    </div>
+  </div>
+
+  <form id="upload-form" class="flex flex-wrap items-center gap-3 mb-3 text-sm">
+    <input id="upload-input" type="file" accept=".bas,.blk,.txt"
+           class="phosphor-dim text-sm file:btn-retro file:border file:px-3 file:py-1 file:mr-2" />
+    <button type="submit" class="btn-retro px-3 py-1">enviar arquivo</button>
+    <span id="upload-msg" class="phosphor-dim"></span>
+  </form>
+
+  <div id="file-list" class="border border-green-900/40 rounded p-2 max-h-64 overflow-y-auto"></div>
+  <p class="phosphor-dim text-xs mt-2">
+    pasta no servidor: <span id="data-dir-label">...</span><br />
+    {% if mode == "monitor" %}
+    dica: os comandos <code>S &lt;nome&gt; &lt;ini&gt; &lt;fim&gt;</code> (salvar bloco) e
+    <code>P &lt;nome&gt; [end]</code> (carregar bloco) do MONITOR j&aacute; leem/gravam nesta pasta.
+    {% else %}
+    dica: use "carregar" para digitar um <code>.bas</code> dentro do BASIC em execu&ccedil;&atilde;o,
+    ou "salvar programa" para gravar o que est&aacute; em mem&oacute;ria agora.
+    {% endif %}
+  </p>
+</section>
+
+{% endblock %}
+
+{% block head %}
+<script>window.TERMINAL_MODE = {{ mode | tojson }};</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/terminal.js') }}"></script>
+<script src="{{ url_for('static', filename='js/files.js') }}"></script>
+{% endblock %}
