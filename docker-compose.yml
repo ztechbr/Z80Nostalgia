@@ -1,0 +1,21 @@
+# Uso local:            docker compose up --build
+# EasyPanel:             pode importar este arquivo direto, ou criar o app
+#                        a partir do Dockerfile (ver DEPLOY.md).
+services:
+  z80nostalgia-web:
+    build: .
+    image: z80nostalgia-web:latest
+    container_name: z80nostalgia-web
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # Troque por um valor fixo e secreto em producao (senao as sessoes
+      # dos navegadores expiram a cada reinicio do container).
+      - Z80_SECRET_KEY=troque-esta-chave-em-producao
+    volumes:
+      # Arquivos .bas/.blk dos usuarios, persistidos entre deploys/restarts.
+      - z80_dados:/data
+
+volumes:
+  z80_dados:

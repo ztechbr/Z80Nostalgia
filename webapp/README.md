@@ -22,6 +22,12 @@ processo Python rodando o emulador).
 > Servidor de desenvolvimento, sem autenticação — pensado para uso local.
 > Não exponha esta porta diretamente na internet.
 
+## Publicar em produção (Docker / EasyPanel)
+
+Veja `DEPLOY.md` na raiz do repositório: há `Dockerfile` e
+`docker-compose.yml` prontos (rodando via `gunicorn`, com volume persistente
+para os arquivos `.bas`/`.blk` dos usuários).
+
 ## Arquivos do usuário
 
 Como o BASIC e o MONITOR reimplementados não têm um "disco" próprio, a

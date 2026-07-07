@@ -1,0 +1,19 @@
+.git
+.gitignore
+.claude
+__pycache__
+**/__pycache__
+*.pyc
+*.blk
+.dockerignore
+Dockerfile
+docker-compose.yml
+webapp/README.md
+README.md
+LICENSE
+
+# material didatico pesado, nao usado pela interface web
+ENGENHARIA_REVERSA_CP300.pdf
+disassembly_full.txt
+EXPLICACAO_BLOCOS_27C128cp300.txt
+gera_pdf.py

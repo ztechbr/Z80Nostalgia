@@ -257,4 +257,5 @@ def api_file_delete(name):
 
 if __name__ == "__main__":
     print(f"Pasta de arquivos do usuario (fora do repositorio): {DATA_DIR}")
-    app.run(host="127.0.0.1", port=int(os.environ.get("PORT", 5000)), threaded=True, debug=False)
+    host = os.environ.get("HOST", "127.0.0.1")
+    app.run(host=host, port=int(os.environ.get("PORT", 5000)), threaded=True, debug=False)

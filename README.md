@@ -103,6 +103,9 @@ python webapp/app.py
 Abra `http://127.0.0.1:5000`. Detalhes (pasta de arquivos `.bas`/`.blk` fora
 do repositório, como funciona a ponte terminal↔web) em `webapp/README.md`.
 
+Também há `Dockerfile` + `docker-compose.yml` prontos para publicar em
+qualquer host Docker (EasyPanel, etc.) — veja `DEPLOY.md`.
+
 ---
 
 ## 🗂️ Estrutura
